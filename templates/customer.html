@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>饗宴點餐系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body { background-color: #f4f6f9; padding-bottom: 100px; }
+        .header-bg { background: linear-gradient(135deg, #FF416C, #FF4B2B); color: white; padding: 18px 0; position: sticky; top: 0; z-index: 999; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .nav-pills .nav-link { color: rgba(255,255,255,0.8); font-weight: bold; margin: 0 5px; border-radius: 20px;}
+        .nav-pills .nav-link.active { background-color: white; color: #FF4B2B; }
+        .food-card { border: none; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; padding: 12px 15px;}
+        .food-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 2px; color: #333;}
+        .food-price { color: #dc3545; font-weight: bold; }
+        .btn-add { background-color: #ff9800; color: white; font-weight: bold; border-radius: 20px; padding: 6px 18px; }
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-radius: 20px 20px 0 0; cursor: pointer; }
+        .category-section { padding-top: 100px; margin-top: -80px; }
+        .cat-title { border-left: 5px solid #FF4B2B; padding-left: 10px; margin-bottom: 15px; font-weight: bolder; color: #222;}
+        .qty-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ccc; background: white; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer;}
+        /* 已送出餐點區塊樣式 */
+        .submitted-box { background-color: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+    </style>
+</head>
+<body data-bs-spy="scroll" data-bs-target="#category-nav">
+    
+    <header class="header-bg text-center">
+        <h2 class="fw-bolder mb-1">桌號：<span class="text-warning">{{ table_id }}</span></h2>
+        <div class="overflow-auto mt-2" style="white-space: nowrap; padding-bottom: 5px;" id="category-nav">
+            <ul class="nav nav-pills d-inline-flex px-2" id="nav-list"></ul>
+        </div>
+    </header>
+
+    <div class="container mt-3" id="menu-container"></div>
+
+    <div class="cart-bar" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas">
+        <div class="d-flex align-items-center">
+            <div class="position-relative me-3">
+                <span style="font-size: 2rem;">🛒</span>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cart-badge">0</span>
+            </div>
+            <span class="h5 fw-bold mb-0 text-dark">明細與購物車</span>
+        </div>
+        <div class="h5 fw-bold mb-0 text-danger">本桌累計: $<span id="total-accumulated">0</span></div>
+    </div>
+
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="cartOffcanvas" style="height: 75vh; border-radius: 20px 20px 0 0;">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title fw-bold">📝 您的點餐明細</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="submitted-box" class="submitted-box d-none">
+                <h6 class="fw-bold text-success mb-2">✅ 已送出 (製作中/已上菜)</h6>
+                <div id="submitted-list" class="mb-2 text-dark small"></div>
+                <div class="text-end fw-bold text-success">已送出總計: $<span id="submitted-total">0</span></div>
+            </div>
+
+            <h6 class="fw-bold text-danger mb-3">🛒 本次新增餐點</h6>
+            <div id="cart-items-container">
+                <div class="text-center text-muted mt-4">還沒有選擇新餐點喔！</div>
+            </div>
+        </div>
+        <div class="offcanvas-footer p-3 border-top bg-light">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">已送出金額</span>
+                <span class="text-muted">$<span id="footer-submitted">0</span></span>
+            </div>
+            <div class="d-flex justify-content-between mb-3 px-2">
+                <span class="h5 fw-bold text-dark">本次新增金額</span>
+                <span class="h4 fw-bold text-danger">$<span id="cart-total-modal">0</span></span>
+            </div>
+            <button class="btn btn-danger w-100 py-3 fw-bold fs-5 rounded-pill shadow-sm" onclick="submitOrder()" id="submit-btn">✅ 確認無誤，送出訂單</button>
+        </div>
+    </div>
+
+    <script>
+        const menuData = [
+            { category: "麵類", id: "noodle", items: [ {name: "鱔魚意麵", price: 120}, {name: "鍋燒意麵", price: 80}, {name: "紅燒牛肉麵", price: 150}, {name: "清燉牛肉麵", price: 150}, {name: "陽春麵", price: 40} ]},
+            { category: "飯類", id: "rice", items: [ {name: "肉燥飯", price: 40}, {name: "爌肉飯", price: 60}, {name: "排骨飯", price: 90}, {name: "牛肉炒飯", price: 90} ]},
+            { category: "湯與火鍋", id: "soup", items: [ {name: "溫體牛肉湯", price: 150}, {name: "虱目魚肚湯", price: 100}, {name: "大腸臭臭鍋", price: 150}, {name: "薑母鴨(單人)", price: 220} ]},
+            { category: "小菜炸物", id: "sides", items: [ {name: "歸仁黑輪", price: 25}, {name: "燙青菜", price: 40}, {name: "台式香雞排", price: 80}, {name: "鹹酥雞", price: 60} ]}
+        ];
+
+        const navList = document.getElementById('nav-list');
+        const container = document.getElementById('menu-container');
+
+        menuData.forEach((cat, index) => {
+            navList.innerHTML += `<li class="nav-item"><a class="nav-link ${index===0?'active':''}" href="#${cat.id}">${cat.category}</a></li>`;
+            let itemsHtml = cat.items.map(item => `
+                <div class="food-card bg-white">
+                    <div>
+                        <div class="food-name">${item.name}</div>
+                        <div class="food-price">$${item.price}</div>
+                    </div>
+                    <button class="btn btn-add" onclick="updateCart('${item.name}', ${item.price}, 1)">選購</button>
+                </div>
+            `).join('');
+            container.innerHTML += `<div id="${cat.id}" class="category-section"><h4 class="cat-title">${cat.category}</h4>${itemsHtml}</div>`;
+        });
+
+        let cart = {}; 
+        let submittedTotal = 0; // 已送出的總額
+
+        // 💡 載入頁面時，去後端抓取這桌今天已經點過的東西
+        async function fetchMyOrders() {
+            try {
+                const res = await fetch(`/api/my_orders?table_id={{table_id}}&token={{token}}`);
+                if(res.ok) {
+                    const data = await res.json();
+                    submittedTotal = data.total;
+                    
+                    if(data.items.length > 0) {
+                        document.getElementById('submitted-box').classList.remove('d-none');
+                        // 計算每種餐點點了幾次
+                        let counts = {};
+                        data.items.forEach(i => counts[i] = (counts[i] || 0) + 1);
+                        
+                        let html = '';
+                        for(let name in counts) {
+                            html += `<div class="d-flex justify-content-between border-bottom border-light pb-1 mb-1">
+                                <span>${name}</span> <span class="fw-bold text-success">x${counts[name]}</span>
+                            </div>`;
+                        }
+                        document.getElementById('submitted-list').innerHTML = html;
+                        document.getElementById('submitted-total').innerText = submittedTotal;
+                        document.getElementById('footer-submitted').innerText = submittedTotal;
+                    }
+                    updateAllTotals();
+                }
+            } catch(e) { console.error("獲取歷史訂單失敗", e); }
+        }
+
+        function updateCart(name, price, change) {
+            if (!cart[name]) cart[name] = { price: price, qty: 0 };
+            cart[name].qty += change;
+            if (cart[name].qty <= 0) delete cart[name];
+            renderCartUI();
+        }
+
+        function renderCartUI() {
+            let currentQty = 0;
+            let currentPrice = 0;
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = ''; 
+
+            const itemNames = Object.keys(cart);
+            if (itemNames.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted mt-4">還沒有選擇新餐點喔！</div>';
+                document.getElementById('submit-btn').disabled = true;
+            } else {
+                document.getElementById('submit-btn').disabled = false;
+                itemNames.forEach(name => {
+                    const item = cart[name];
+                    currentQty += item.qty;
+                    currentPrice += (item.price * item.qty);
+                    container.innerHTML += `
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                            <div>
+                                <div class="fw-bold fs-5">${name}</div>
+                                <div class="text-danger fw-bold">$${item.price}</div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <button class="qty-btn text-danger" onclick="updateCart('${name}', ${item.price}, -1)">−</button>
+                                <span class="mx-3 fw-bold fs-5">${item.qty}</span>
+                                <button class="qty-btn text-success" onclick="updateCart('${name}', ${item.price}, 1)">+</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('cart-badge').innerText = currentQty;
+            document.getElementById('cart-total-modal').innerText = currentPrice;
+            updateAllTotals(currentPrice);
+        }
+
+        function updateAllTotals(currentPrice = 0) {
+            // 最下方的浮動 Bar 顯示的總金額 = 過去已送出 + 現在購物車
+            document.getElementById('total-accumulated').innerText = submittedTotal + currentPrice;
+        }
+
+        async function submitOrder() {
+            let finalItems = [];
+            let finalTotal = 0;
+            for (const [name, data] of Object.entries(cart)) {
+                for (let i = 0; i < data.qty; i++) finalItems.push(name);
+                finalTotal += (data.price * data.qty);
+            }
+
+            if (finalItems.length === 0) return;
+            
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "⏳ 訂單傳送中...";
+
+            try {
+                const res = await fetch('/api/submit_order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ table_id: "{{ table_id }}", token: "{{ token }}", items: finalItems, total: finalTotal })
+                });
+                if(res.ok) {
+                    alert("✅ 點餐成功！廚房已開始製作。");
+                    cart = {}; // 清空當下購物車
+                    renderCartUI(); // 重繪畫面
+                    fetchMyOrders(); // 重新抓取累計資料
+                    // 關閉 Offcanvas
+                    var myOffcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('cartOffcanvas'));
+                    myOffcanvas.hide();
+                    btn.innerText = "✅ 確認無誤，送出訂單";
+                } else {
+                    const result = await res.json();
+                    alert("❌ 錯誤: " + result.detail);
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert("❌ 網路異常，請確認連線！");
+                btn.disabled = false;
+            }
+        }
+
+        // 網頁一打開，立刻抓取已送出的紀錄
+        fetchMyOrders();
+        renderCartUI();
+    </script>
+</body>
+</html>

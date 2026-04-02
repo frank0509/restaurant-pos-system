@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: order_system_app
+    ports:
+      - "8000:8000"
+    restart: always  # 系統崩潰或重開機會自動重啟
+    volumes:
+      # 【本機路徑】 : 【容器內路徑】
+      # 這樣設定可以讓 Docker 裡的資料直接寫入你 F 槽的檔案裡
+      - ./orders.db:/app/orders.db
+      - ./system.log:/app/system.log
+      - ./static:/app/static

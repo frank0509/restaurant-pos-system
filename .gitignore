@@ -1,0 +1,15 @@
+# Python 虛擬環境與快取
+venv/
+__pycache__/
+*.pyc
+
+# 資料庫與 Log (不要把真實營收資料傳上網)
+orders.db
+system.log
+
+# 環境變數與作業系統隱藏檔
+.env
+.DS_Store
+
+# 存放 QR Code 的圖檔也不用傳 (因為每次重開都會重產)
+static/qr_*.png
