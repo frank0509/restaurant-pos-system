@@ -11,23 +11,23 @@
 
 ```mermaid
 graph TD
-    subgraph Docker Container [🐳 Docker 容器 (Python 3.10)]
-        API[⚙️ FastAPI 伺服器]
-        WS[📡 WebSocket 管理器]
-        GC[🧹 背景清理任務]
+    subgraph DockerContainer ["🐳 Docker 容器 (Python 3.10)"]
+        API["⚙️ FastAPI 伺服器"]
+        WS["📡 WebSocket 管理器"]
+        GC["🧹 背景清理任務"]
     end
 
-    DB[(🗄️ SQLite orders.db)]
-    Disk[📁 實體圖檔 static/]
+    DB[("🗄️ SQLite orders.db")]
+    Disk["📁 實體圖檔 static/"]
 
-    Customer[📱 顧客手機] -- 1. HTTP 掃碼點餐 --> API
-    API -- 2. 寫入訂單 --> DB
-    API -- 3. 觸發推播 --> WS
-    WS -. 4. 雙向即時連線 .-> KDS[👨‍🍳 廚房看板]
-    KDS -- 5. 更改訂單狀態 --> API
+    Customer["📱 顧客手機"] -- "1. HTTP 掃碼點餐" --> API
+    API -- "2. 寫入訂單" --> DB
+    API -- "3. 觸發推播" --> WS
+    WS -. "4. 雙向即時連線" .-> KDS["👨‍🍳 廚房看板"]
+    KDS -- "5. 更改訂單狀態" --> API
     
-    GC -. 定時刪除過期資料 .-> DB
-    GC -. 定時刪除實體圖檔 .-> Disk
+    GC -. "定時刪除過期資料" .-> DB
+    GC -. "定時刪除實體圖檔" .-> Disk
 ```
 
 ### 2. 核心點餐時序圖 (Sequence Diagram)
